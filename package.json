@@ -1,0 +1,16 @@
+{
+  "name": "neis-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "tf2_mandeokyi",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.4.1",
+    "node-fetch": "^2.6.1",
+    "string-similarity": "^4.0.2"
+  }
+}
