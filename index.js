@@ -37,7 +37,7 @@ client.on('message', async (message) => {
 
         await command.execute(message, args, neisClient).catch(async reason => {
             channel.send(
-                new discord.MessageEmbed().setColor('#ff0000').setTitle(`에러: ${reason}`)
+                new discord.MessageEmbed().setColor('#ff0000').setTitle(`Error: ${reason}`)
             );
         });
 
