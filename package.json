@@ -9,6 +9,7 @@
   "author": "tf2_mandeokyi",
   "license": "ISC",
   "dependencies": {
+    "canvas": "^2.6.1",
     "discord.js": "^12.4.1",
     "node-fetch": "^2.6.1",
     "string-similarity": "^4.0.2"
