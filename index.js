@@ -19,7 +19,7 @@ client.on('message', async (message) => {
 
         let { channel } = message;
 
-        let { command, args } = CommandUtil.parse(message.content, config.command.prefix);
+        let { command, args, commandString } = CommandUtil.parse(message.content, config.command.prefix);
 
         if(!command) return;
 
@@ -33,7 +33,7 @@ client.on('message', async (message) => {
             return;
         }
 
-        await command.execute(message, args, neisClient).catch(async reason => {
+        await command.execute(message, args, neisClient, commandString).catch(async reason => {
             channel.send(
                 new discord.MessageEmbed().setColor('#ff0000').setTitle(`Error: ${reason}`)
             );
@@ -43,7 +43,7 @@ client.on('message', async (message) => {
 });
 
 client.on('ready', () => {
-    client.user.setActivity('neis:help');
+    client.user.setActivity(`${config.command.prefix}:help`);
     console.log('NeisBot is online!');
 })
 
