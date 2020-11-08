@@ -45,7 +45,7 @@ client.on('message', async (message) => {
 });
 
 client.on('ready', () => {
-    client.user.setActivity('neis:commands');
+    client.user.setActivity('neis:help');
     console.log('NeisBot is online!');
 })
 
