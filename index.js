@@ -44,4 +44,9 @@ client.on('message', async (message) => {
     }
 });
 
+client.on('ready', () => {
+    client.user.setActivity('neis:commands');
+    console.log('NeisBot is online!');
+})
+
 client.login(important['bot-token']);
