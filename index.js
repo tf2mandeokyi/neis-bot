@@ -43,7 +43,7 @@ client.on('message', async (message) => {
 });
 
 client.on('ready', () => {
-    client.user.setActivity(`${config.command.prefix}:help`);
+    client.user.setActivity(`${config.command.prefix}help`);
     console.log('NeisBot is online!');
 })
 
