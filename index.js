@@ -3,8 +3,8 @@ const discord = require('discord.js');
 const important = require('./important.json');
 
 
-const commands = require('./lib/commands');
 const config = require('./lib/config.json');
+const CommandUtil = require('./lib/neis/util/commandutil');
 
 
 const client = new discord.Client();
@@ -19,9 +19,7 @@ client.on('message', async (message) => {
 
         let { channel } = message;
 
-        let withoutPrefix = message.content.substring(config.command.prefix.length);
-        let args = withoutPrefix.split(' ');
-        let command = commands[args.shift()];
+        let { command, args } = CommandUtil.parse(message.content, config.command.prefix);
 
         if(!command) return;
 
