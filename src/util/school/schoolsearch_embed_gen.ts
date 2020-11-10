@@ -41,7 +41,6 @@ export async function generate(
     let page_count = Math.ceil(schools.length / schoolCountPerPage);
     let { min: page_min, max: page_max } = getPaginationRange(page, schoolCountPerPage, page_count);
 
-
     let pagination = '';
 
     if(page > 2) pagination += '⏪ ';

@@ -77,7 +77,7 @@ const textlimit = {
 
 
 
-export function generate(table: [Date, string[]][]) {
+export function generate(table: [Date, {[x: number]: string}][]) {
 
     let {min: earliestPeriod, delta: periodcount} = ScheduleTableUtil.getTablePeriodMinMax(table);
     let daycount = table.length;

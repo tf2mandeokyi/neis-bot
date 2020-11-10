@@ -1,6 +1,6 @@
-import { NeisApiClient } from './src/api/neis';
 import * as discord from 'discord.js';
 import * as fs from 'fs';
+import { NeisApiClient } from './src/api/neis';
 import { ReactionListenerList } from './src/commands/reactions';
 
 
