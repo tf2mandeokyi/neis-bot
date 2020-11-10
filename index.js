@@ -1,4 +1,4 @@
-const { NeisApiClient } = require('./lib/neis/neis');
+const { NeisApiClient } = require('./lib/neis');
 const discord = require('discord.js');
 const important = require('./important.json');
 
@@ -37,6 +37,7 @@ client.on('message', async (message) => {
             channel.send(
                 new discord.MessageEmbed().setColor('#ff0000').setTitle(`Error: ${reason}`)
             );
+            console.log(reason);
         });
 
     }
