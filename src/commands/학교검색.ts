@@ -1,4 +1,5 @@
 import { Command } from ".";
+import { reactionListeners } from "../..";
 import * as SchoolSearchEmbedGenerator from '../util/school/schoolsearch_embed_gen';
 
 export default new Command({
@@ -14,33 +15,28 @@ export default new Command({
 
             let sentMessage = await channel.send(result);
 
-            ['⏪', '◀️', '▶️', '⏩'].forEach(async emoji => await sentMessage.react(emoji)); // Add pagination reactions
+            for (let emoji of ['⏪', '◀️', '▶️', '⏩']) {
+                await sentMessage.react(emoji); // Add pagination reactions
+            }
 
-            sentMessage.awaitReactions(
-                (reaction, user) => {
-                    const emoji = reaction.emoji.name;
-                    return ['⏪', '◀️', '▶️', '⏩'].includes(emoji) // User reacted with right emoji.
-                        && user.id === author.id; // User who has sent the command reacted.
-                },
-                {max: 10000, time: 60000}
-            ).then(collection => {
-                const reaction = collection.first();
-                if(!reaction) return;
-                const emoji = reaction.emoji.name; // Get reaction emoji
-
-                switch(emoji) {
+            reactionListeners.addListener(sentMessage.id, {m: 3}, (reaction, user) => {
+                if(user.id !== author.id) {
+                    return false;
+                }
+                switch(reaction.emoji.name) {
                     case '⏪':
                         console.log('go to the first page');
-                        break;
+                        return true;
                     case '◀️':
                         console.log('go to the previous page');
-                        break;
+                        return true;
                     case '▶️':
                         console.log('go to the next page');
-                        break;
+                        return true;
                     case '⏩':
                         console.log('go to the last page');
-                        break;
+                        return true;
+                    default: return false;
                 }
             });
         })
