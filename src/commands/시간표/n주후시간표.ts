@@ -1,8 +1,8 @@
 import { Command } from "..";
 import { ScheduleTable } from "../../api/neis";
 import { School } from "../../api/neis/classes/school";
-import * as ScheduleTableImageGenerator from '../../api/neis/util/subject_schedule/images/table_img_gen';
-import * as DateUtil from '../../api/neis/util/dateutil';
+import * as ScheduleTableImageGenerator from '../../util/subject_schedule/images/table_img_gen';
+import * as DateUtil from '../../util/dateutil';
 import * as discord from 'discord.js'
 
 export default new Command({

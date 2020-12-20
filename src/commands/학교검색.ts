@@ -1,5 +1,5 @@
 import { Command } from ".";
-import * as SchoolSearchEmbedGenerator from '../api/neis/util/school/schoolsearch_embed_gen';
+import * as SchoolSearchEmbedGenerator from '../util/school/schoolsearch_embed_gen';
 
 export default new Command({
     regex: /^학교검색$/,

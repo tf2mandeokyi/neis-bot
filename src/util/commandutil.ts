@@ -1,4 +1,4 @@
-import * as Commands from '../../../commands';
+import * as Commands from '../commands';
 
 export function parse(message: string, prefix: string) {
 

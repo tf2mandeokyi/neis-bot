@@ -3,7 +3,7 @@ import { RawSchoolInfo, School } from './classes/school';
 import { RawSchoolMealInfo, SchoolMeal } from './classes/school/school_meal';
 import { RawSubjectTime, SubjectTime } from './classes/time/subject_time';
 import * as stringSimilarity from 'string-similarity';
-import * as NeisDateUtil from './util/dateutil';
+import * as NeisDateUtil from '../../util/dateutil';
 
 
 

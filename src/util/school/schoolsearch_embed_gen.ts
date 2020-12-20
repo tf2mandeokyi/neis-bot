@@ -1,6 +1,6 @@
 import * as discord from 'discord.js';
-import { NeisApiClient } from '../..';
-import { School } from '../../classes/school';
+import { NeisApiClient } from '../../api/neis';
+import { School } from '../../api/neis/classes/school';
 
 
 

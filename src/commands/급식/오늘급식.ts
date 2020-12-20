@@ -1,5 +1,5 @@
 import { Command } from "..";
-import { formatDate } from "../../api/neis/util/dateutil";
+import { formatDate } from "../../util/dateutil";
 import * as discord from 'discord.js'
 
 export default new Command({
