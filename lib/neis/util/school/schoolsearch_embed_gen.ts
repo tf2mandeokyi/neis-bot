@@ -9,13 +9,23 @@ export const numberEmojiArray = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5�
 
 
 
-const getPaginationRange = function(page: number, pageCount: number, elementCount: number) {
-    let page_end = Math.ceil(elementCount/pageCount);
-    return {
-        min: Math.min(Math.max(1, page-2), page_end-4),
-        max: Math.max(5, Math.min(page+2, page_end)),
-        page_end: page_end
-    };
+const getPaginationRange = function(page: number, pageCount: number, arrayLength: number) {
+    let delta = Math.floor(pageCount / 2);
+    let page_first = page - delta, page_last = page + delta;
+    if(page_first < 1 && page_last > arrayLength) {
+        return {min: 1, max: arrayLength};
+    }
+    else if(page_first < 1) {
+        let d = 1 - page_first;
+        return {min: 1, max: Math.min(arrayLength, page_last + d)}
+    }
+    else if(page_last > arrayLength) {
+        let d = page_last - arrayLength;
+        return {min: Math.max(1, page_first - d), max: arrayLength};
+    }
+    else {
+        return {min: page_first, max: page_last}
+    }
 }
 
 
@@ -74,14 +84,15 @@ export async function generate(
             schools = tmp.schools; total_count = tmp.total_count;
         } catch(e) { rej(e); return }
 
-        let { min: it_min, max: it_max, page_end } = getPaginationRange(page, schoolCountPerPage, schools.length);
+        let page_count = Math.ceil(schools.length / schoolCountPerPage);
+        let { min: page_min, max: page_max } = getPaginationRange(page, schoolCountPerPage, page_count);
 
         let pagination = '⏪ ◀️ ';
-        if(1 !== it_min) pagination += '1 ... '
-        for(let i=it_min;i<=it_max;i++) {
+        if(1 !== page_min) pagination += '1 ... '
+        for(let i=page_min;i<=page_max;i++) {
             pagination += i === page ? `__**${i}**__ ` : `${i} `;
         }
-        if(page_end !== it_max) pagination += `... ${page_end} `
+        if(page_count !== page_max) pagination += `... ${page_count} `
         pagination += '▶️ ⏩'; // Setting up pagination string
 
         let description = `Found ${total_count} ${total_count === 1 ? 'school' : 'schools'}`;
