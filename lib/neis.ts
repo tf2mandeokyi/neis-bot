@@ -1,19 +1,31 @@
-const fetch = require('node-fetch');
-const { School } = require('./neis/classes/school');
-const { SchoolMeal } = require('./neis/classes/school/school_meal');
-const { SubjectTime } = require('./neis/classes/time/subject_time');
-const stringSimilarity = require('string-similarity');
-const NeisDateUtil = require('./neis/util/dateutil');
+import fetch from 'node-fetch';
+import { RawSchoolInfo, School } from './neis/classes/school';
+import { RawSchoolMealInfo, SchoolMeal } from './neis/classes/school/school_meal';
+import { RawSubjectTime, SubjectTime } from './neis/classes/time/subject_time';
+import * as stringSimilarity from 'string-similarity';
+import * as NeisDateUtil from './neis/util/dateutil';
 
 
 
-/**
- * @typedef {[{list_total_count: number}, {RESULT: {CODE: string, MESSAGE: string}}]} RawResponseHeader
- */
+export type RawResponseHeader = [
+    {list_total_count: number},
+    {
+        RESULT: {
+            CODE: string, MESSAGE: string
+        }
+    }
+]
 
-/**
- * @typedef {[{head: RawResponseHeader}, {row: Object[]}]} RawNeisResponse
- */
+
+
+export type RawNeisResponse<T> = [
+    {head: RawResponseHeader},
+    {row: T[]}
+]
+
+
+
+export type ScheduleTable = {[x: number]: {[x: number]: string}};
 
 
 
@@ -35,11 +47,13 @@ const encodeObjectToURI = function(object) {
 
 
 
-class NeisResponse {
-    /**
-     * @param {RawNeisResponse} rawData
-     */
-    constructor(rawData) {
+export class NeisResponse<T> {
+
+    totalCount : number;
+    resCode : string;
+    data : T[];
+
+    constructor(rawData: RawNeisResponse<T>) {
         if(rawData) {
             let head = rawData[0].head;
 
@@ -52,41 +66,38 @@ class NeisResponse {
 
 
 
-class NeisApiClient {
+export class NeisApiClient {
 
 
 
-    constructor(key) {
+    private key : string;
+
+
+
+    constructor(key: string) {
         this.key = key;
     }
     
 
 
-    /**
-     * @param {string} path 
-     * @param {{index: number, size: number}} param1 
-     * @param {any} param 
-     * @param {string} name 
-     */
-    async fetchData(path, {index=1, size=1000}, param, name) {
+    async fetchData<T>(path: string, {index=1, size=1000}, param: any, name: string) : Promise<NeisResponse<T>> {
         param['KEY'] = this.key;
         param['pIndex'] = index; param['pSize'] = size; param['Type'] = 'json';
 
         const url = apiUrl + path + '?' + encodeObjectToURI(param);
         const data = await (await fetch(url)).json();
-        return new NeisResponse(data[name]);
+        return new NeisResponse<T>(data[name]);
     }
 
 
 
-    /**
-     * @param {string} name 
-     * @param {{index: number, size: number}} options
-     * @returns {Promise<{schools: School[], total_count: number}>}
-     * */
-    getSchoolByName(name, options={index: undefined, size: undefined}) {
+    getSchoolByName(
+            name: string,
+            options : {index: number, size: number} = {index: undefined, size: undefined}
+    ) : Promise<{schools: School[], total_count: number}>
+    {
         return new Promise(async (res, rej) => {
-            const response = await this.fetchData('/hub/schoolInfo', options, {SCHUL_NM: name}, 'schoolInfo')
+            const response = await this.fetchData<RawSchoolInfo>('/hub/schoolInfo', options, {SCHUL_NM: name}, 'schoolInfo')
             
             if(!response.data) rej(`\`${name}\` (이)라는 학교가 존재하지 않습니다.`);
             else res({
@@ -100,15 +111,14 @@ class NeisApiClient {
 
 
 
-    /**
-     * @param {string} schoolCode
-     * @param {string} eduOfficeCode
-     * @param {{from: Date, to: Date}} dateInfo
-     * @returns {Promise<SchoolMeal[]>}
-     */
-    getSchoolMeal(schoolCode, eduOfficeCode, {from, to}) {
+    getSchoolMeal(
+            schoolCode: string,
+            eduOfficeCode: string,
+            {from, to} : {from: Date, to: Date}
+    ) : Promise<SchoolMeal[]>
+    {
         return new Promise(async (res, rej) => {
-            const response = await this.fetchData('/hub/mealServiceDietInfo', {}, {
+            const response = await this.fetchData<RawSchoolMealInfo>('/hub/mealServiceDietInfo', {}, {
                 ATPT_OFCDC_SC_CODE: eduOfficeCode,
                 SD_SCHUL_CODE: schoolCode,
                 MLSV_FROM_YMD: NeisDateUtil.toYYYYMMDD(from),
@@ -124,15 +134,14 @@ class NeisApiClient {
 
 
 
-    /**
-     * @param {string} eduOfficeCode 
-     * @param {string} schoolCode
-     * @param {'ele'|'mid'|'high'|'others'} schoolType
-     * @param {{year: number, semester: string, grade: string, classname: string}} param2 
-     * @param {{from: Date, to: Date}} param3 
-     * @returns {Promise<SubjectTime[]>}
-     */
-    getSubjectSchedule(schoolCode, eduOfficeCode, schoolType, {year, semester, grade, classname}, {from, to}) {
+    getSubjectSchedule(
+            schoolCode: string,
+            eduOfficeCode: string,
+            schoolType: ('ele'|'mid'|'high'|'others'),
+            {year, semester, grade, classname}: {year: number, semester: string, grade: string, classname: string},
+            {from, to}: {from: Date, to: Date}
+    ) : Promise<SubjectTime[]>
+    {
         return new Promise(async (res, rej) => {
             let st;
             switch(schoolType) {
@@ -141,7 +150,7 @@ class NeisApiClient {
                 case 'high':   st = 'hisTimetable'; break;
                 case 'others': st = 'spsTimetable'; break;
             }
-            const response = await this.fetchData(`/hub/${st}`, {}, {
+            const response = await this.fetchData<RawSubjectTime>(`/hub/${st}`, {}, {
                 ATPT_OFCDC_SC_CODE: eduOfficeCode,
                 SD_SCHUL_CODE: schoolCode,
                 AY: year,
@@ -161,15 +170,14 @@ class NeisApiClient {
 
 
 
-    /**
-     * @param {string} eduOfficeCode 
-     * @param {string} schoolCode
-     * @param {'ele'|'mid'|'high'|'others'} schoolType
-     * @param {{year: number, semester: string, grade: string, classname: string}} classInfo 
-     * @param {Date} date 
-     * @returns {Promise<{table: Object<number, Object<number, string>>, week: {from: Date, to: Date}}>}
-     */
-    getWeekSubjectSchedule(schoolCode, eduOfficeCode, schoolType, classInfo={year, semester, grade, classname}, date) {
+    getWeekSubjectSchedule(
+            schoolCode: string,
+            eduOfficeCode: string,
+            schoolType: 'ele'|'mid'|'high'|'others',
+            classInfo: {year: number, semester: string, grade: string, classname: string},
+            date: Date
+    ) : Promise<{table: ScheduleTable, week: {from: Date, to: Date}}>
+    {
         return new Promise(async (res, rej) => {
             
             let week = NeisDateUtil.getWeekEdge(date);
@@ -182,8 +190,7 @@ class NeisApiClient {
                 rej(e); return;
             }
 
-            /** @type {Object<number, Object<number, string>} */
-            const subjectSet = {};
+            const subjectSet : ScheduleTable = {};
             for(
                 let i=0,d=week.from.getDate(),date=new Date(week.from);
                 i<7;
@@ -206,14 +213,4 @@ class NeisApiClient {
         })
         
     }
-
-
-
-}
-
-
-
-module.exports = {
-    NeisApiClient: NeisApiClient,
-    NeisResponse: NeisResponse
 }

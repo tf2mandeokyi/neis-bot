@@ -9,9 +9,12 @@
   "author": "tf2_mandeokyi",
   "license": "ISC",
   "dependencies": {
+    "@types/node-fetch": "^2.5.7",
+    "@types/string-similarity": "^4.0.0",
     "canvas": "^2.6.1",
     "discord.js": "^12.4.1",
     "node-fetch": "^2.6.1",
-    "string-similarity": "^4.0.2"
+    "string-similarity": "^4.0.2",
+    "typescript": "^4.1.3"
   }
 }

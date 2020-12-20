@@ -1,35 +1,51 @@
-const discord = require('discord.js');
-const { NeisApiClient } = require('./neis');
-const { School } = require('./neis/classes/school');
-const { SchoolMeal } = require('./neis/classes/school/school_meal')
-const { SubjectTime } = require('./neis/classes/time/subject_time')
-const config = require('./config.json');
-const DateUtil = require('./neis/util/dateutil');
-const { ScheduleTableImageGenerator } = require('./neis/util/subject_schedule/images/table_img_gen');
+import * as discord from 'discord.js';
+import { NeisApiClient, ScheduleTable } from './neis';
+import { School } from './neis/classes/school';
+import { SchoolMeal } from './neis/classes/school/school_meal'
+import { SubjectTime } from './neis/classes/time/subject_time'
+import * as DateUtil from './neis/util/dateutil';
+import * as ScheduleTableImageGenerator from './neis/util/subject_schedule/images/table_img_gen';
+import * as SchoolSearchEmbedGenerator from './neis/util/school/schoolsearch_embed_gen';
+import * as fs from 'fs';
+
+const config = JSON.parse(fs.readFileSync('lib/config.json').toString());
 
 
 
 
 
-/**
- * @typedef {Object} Command
- * @property {RegExp} regex Regex for the command
- * @property {number} argsLength Least argument count.
- * @property {string} category Categories
- * @property {boolean} unused True if unused.
- * @property {{usage: string, description: string}[]} usages Usage of how to use the command.
- * @property {(message: discord.Message, args: string[], neisClient: NeisApiClient, command: string) => Promise<void>} execute function
- */
+type StringOrNumber = string | number;
+type ObjectMap<V> = {
+    [x: string] : V
+}
 
 
 
 
 
-/**
- * 
- * @param {Date} date 
- */
-const formatDate = function(date) {
+export interface CommandUsage {
+    usage: string,
+    description: string
+}
+
+
+
+
+
+export interface Command {
+    regex: RegExp,
+    argsLength: number,
+    category: string,
+    unused?: boolean,
+    usages: CommandUsage[],
+    execute: (message: discord.Message, args: string[], neisClient: NeisApiClient, command: string) => Promise<void>
+}
+
+
+
+
+
+const formatDate = function(date: Date) : string {
     return `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일`;
 }
 
@@ -37,10 +53,7 @@ const formatDate = function(date) {
 
 
 
-/**
- * @param {string} command 
- */
-const getCommand = function(command) {
+export function getCommand(command: string) : Command {
     return commands.find(c => c.regex.test(command) && !c.unused)
 }
 
@@ -48,8 +61,7 @@ const getCommand = function(command) {
 
 
 
-/** @type {[Command]} */
-const commands = [
+export const commands : Command[] = [
 
 
 
@@ -71,8 +83,7 @@ const commands = [
                 switch(args.length) {
 
                     case 0: // No parameters
-                        /** @type {Object<string, Command[]>} */
-                        let categorySet = {};
+                        let categorySet : ObjectMap<Command[]> = {};
 
                         commands.forEach((c) => {
                             if(c.unused === true) return;
@@ -133,46 +144,42 @@ const commands = [
         category: '학교',
         usages: [{usage: '학교검색 <학교>', description: '해당하는 학교의 정보를 출력합니다.'}],
         execute: async (message, args, neisClient) => {
-            /**
-             * let page_end = Math.ceil(schools.length/schoolCountPerPage);
-+        let it_min = Math.min(Math.max(1, page-2), page_end-4), it_max = Math.max(5, Math.min(page+2, page_end)); // Setting up for iterator
-+
-+        let pagination = '⏪ ◀️ ';
-+        if(1 !== it_min) pagination += '1 ... '
-+        for(let i=it_min;i<=it_max;i++) {
-+            pagination += i === page ? `__**${i}**__ ` : `${i} `;
-+        }
-+        if(page_end !== it_max) pagination += `... ${page_end} `
-+        pagination += '▶️ ⏩'; // Setting up pagination string
-             */
             return new Promise(async (res, rej) => {
-                let { channel } = message;
-                
-                /** @type {School[]} */
-                let schools, total_count;
-                try { 
-                    let tmp = (await neisClient.getSchoolByName(args[0]));
-                    schools = tmp.schools; total_count = tmp.total_count;
-                } catch(e) { rej(e); return }
+                let { channel, author } = message;
 
-                let result = new discord.MessageEmbed().setTitle('검색 결과').setColor('#00ff00').setTimestamp()
-                    .setDescription(`Found ${total_count} ${total_count === 1 ? 'school' : 'schools'}`)
-                    .addFields(
-                        schools.slice(0, 5).map(school => ({
-                            name: `${school.name} (${school.code})`,
-                            value: `> **교육청**: ${school.eduOffice.name} (코드: ${school.eduOffice.code})\n` +
-                                    `> **종류**: ${school.type}\n` +
-                                    `> **영문명**: ${school.engName}\n` +
-                                    `> **도로명 주소**: ${school.roadName.address} (우편번호: ${school.roadName.zipCode})\n` +
-                                    `> **Tel**: ${school.telephone} (팩스: ${school.fax})\n\u200B`
-                        }))
-                    );
-                
-                if(schools.length > 5) {
-                    result.addField('...', '\u200B');
-                }
+                let result = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], 1, {schoolCountPerPage: 5});
 
-                channel.send(result);
+                let sentMessage = await channel.send(result);
+
+                ['⏪', '◀️', '▶️', '⏩'].forEach(async emoji => await sentMessage.react(emoji)); // Add pagination reactions
+
+                sentMessage.awaitReactions(
+                    (reaction, user) => {
+                        const emoji = reaction.emoji.name;
+                        return ['⏪', '◀️', '▶️', '⏩'].includes(emoji) // User reacted with right emoji.
+                            && user.id === author.id; // User who has sent the command reacted.
+                    },
+                    {max: 10000, time: 60000}
+                ).then(collection => {
+                    const reaction = collection.first();
+                    if(!reaction) return;
+                    const emoji = reaction.emoji.name; // Get reaction emoji
+
+                    switch(emoji) {
+                        case '⏪':
+                            console.log('go to the first page');
+                            break;
+                        case '◀️':
+                            console.log('go to the previous page');
+                            break;
+                        case '▶️':
+                            console.log('go to the next page');
+                            break;
+                        case '⏩':
+                            console.log('go to the last page');
+                            break;
+                    }
+                });
             })
         }
     },
@@ -181,10 +188,11 @@ const commands = [
 
 
 
-    {
+    /*{
 		regex: /^학교검색(:(\d+))$/,
         argsLength: 1,
         category: '학교',
+        unused: true,
         usages: [{usage: '학교검색 <검색어>', description: '검색어가 포함되어있는 학교들을 출력합니다.'}],
         execute: async (message, args, neisClient, command) => {
             return new Promise(async (res, rej) => {
@@ -193,13 +201,13 @@ const commands = [
                     let { channel, author } = message;
                     
                     let [_, __, page_number] = /^학교검색(:(\d+))$/.exec(command);
-                    let page = page_number - 0; // Getting page number
+                    let page = parseInt(page_number); // Getting page number
 
                     const { embed, schools } = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], page, {schoolCountPerPage: 6});
 
                     let sentMessage = await channel.send(embed); // Send embed object
 
-                    /** Number emoji array. */
+                    // Number emoji array.
                     let nearray = SchoolSearchEmbedGenerator.numberEmojiArray.slice(0, schools.length);
 
                     ['⏪', '◀️'].forEach(async emoji => await sentMessage.react(emoji));
@@ -242,7 +250,7 @@ const commands = [
                 } catch(e) {rej(e)}
             })
         }
-    },
+    },*/
 
 
 
@@ -336,9 +344,9 @@ const commands = [
             return new Promise(async (res, rej) => {
                 let { channel } = message;
 
-                let [_, week_number] = /^(\-*\d+)주후급식$/.exec(command);
+                let [_, weekFromCommand] = /^(\-*\d+)주후급식$/.exec(command);
 
-                week_number -= 0;
+                let week_number = parseInt(weekFromCommand);
 
                 if(week_number === NaN) {
                     rej(`반드시 "주후시간표" 이전에는 숫자가 들어가야 합니다.`); return;
@@ -363,10 +371,7 @@ const commands = [
                     rej(e); return;
                 }
 
-                /**
-                 * @type {Object<string, SchoolMeal[]>}
-                 */
-                let mealTypeSet = {};
+                let mealTypeSet : ObjectMap<SchoolMeal[]> = {};
 
                 responseData.forEach(day => {
                     if(!mealTypeSet[day.mealType]) mealTypeSet[day.mealType] = [];
@@ -438,24 +443,23 @@ const commands = [
             return new Promise(async (res, rej) => {
                 let { channel } = message;
 
-                let [_, week_number] = /^(\-*\d+)주후시간표$/.exec(command);
+                let [_, weekFromCommand] = /^(\-*\d+)주후시간표$/.exec(command);
 
-                week_number -= 0;
+                let week_number = parseInt(weekFromCommand);
 
-                if(week_number === NaN) {
+                if(week_number !== week_number) {
                     rej(`반드시 "주후시간표" 이전에는 숫자가 들어가야 합니다.`); return;
                 }
 
                 if(args[0].length === 0) rej(`학교명이 비워져있습니다.`);
 
-                /** @type {School[]} */
-                let schools;
+                let schools : School[];
                 try { schools = (await neisClient.getSchoolByName(args[0])).schools } catch(e) { rej(e); return }
 
                 if(!schools) { rej(`\`${args[0]}\` (이)라는 학교가 존재하지 않습니다.`); return }
                 let school = schools[0];
 
-                let schoolType = 'others';
+                let schoolType : ('ele'|'mid'|'high'|'others') = 'others';
                 switch(school.type) {
                     case '초등학교': schoolType = 'ele'; break;
                     case '중학교': schoolType = 'mid'; break;
@@ -465,10 +469,10 @@ const commands = [
                 let tempDate = new Date();
                 tempDate.setDate(tempDate.getDate() + 7*week_number);
 
-                let table;
+                let table: ScheduleTable, week: {from: Date, to: Date};
                 try {
                     let responseData = await neisClient.getWeekSubjectSchedule(school.code, school.eduOffice.code, schoolType, {
-                        year: args[1],
+                        year: parseInt(args[1]),
                         semester: args[2],
                         grade: args[3],
                         classname: args[4]
@@ -479,11 +483,14 @@ const commands = [
                     rej(e); return;
                 }
 
-                /** @type {[Date, Object<number, string>][]} */
-                let timeTable = Object.entries(table).sort((entryA, entryB) => entryA[0] - entryB[0]).map(entry => ([
-                    DateUtil.parseYYYYMMDD(entry[0]),
-                    entry[1]
-                ]));
+                let timeTable : any = Object.entries(table).sort((entryA, entryB) => parseInt(entryA[0]) - parseInt(entryB[0])).map(entry => {
+                    let result = [
+                        DateUtil.parseYYYYMMDD(entry[0]),
+                        entry[1]
+                    ]
+                    return result;
+                });
+                // TODO fix this
 
                 let image = ScheduleTableImageGenerator.generate(timeTable);
                 
@@ -493,12 +500,3 @@ const commands = [
     }
 
 ]
-
-
-
-
-
-module.exports = {
-    list: commands,
-    getCommand: getCommand
-};

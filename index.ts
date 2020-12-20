@@ -1,10 +1,12 @@
-const { NeisApiClient } = require('./lib/neis');
-const discord = require('discord.js');
-const important = require('./important.json');
+import { NeisApiClient } from './lib/neis';
+import * as discord from 'discord.js';
+import * as CommandUtil from './lib/neis/util/commandutil';
+import * as fs from 'fs';
 
 
-const config = require('./lib/config.json');
-const CommandUtil = require('./lib/neis/util/commandutil');
+let important : any, config: any;
+important = JSON.parse(fs.readFileSync('important.json').toString())
+config = JSON.parse(fs.readFileSync('lib/config.json').toString())
 
 
 const client = new discord.Client();
