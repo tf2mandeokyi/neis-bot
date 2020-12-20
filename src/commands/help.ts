@@ -1,5 +1,5 @@
 import { config } from "../..";
-import { Command, commands, getCommand, ObjectMap } from "../commands";
+import { Command, commands, getCommand, ObjectMap } from ".";
 import * as discord from 'discord.js'
 
 export default new Command({

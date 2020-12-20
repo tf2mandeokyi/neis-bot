@@ -1,8 +1,8 @@
-import { Command, ObjectMap } from "../../commands";
-import { SchoolMeal } from "../../neis/classes/school/school_meal";
-import * as DateUtil from '../../neis/util/dateutil';
+import { Command, ObjectMap } from "..";
+import { SchoolMeal } from "../../api/neis/classes/school/school_meal";
+import * as DateUtil from '../../api/neis/util/dateutil';
 import * as discord from 'discord.js'
-import { formatDate } from "../../neis/util/dateutil";
+import { formatDate } from "../../api/neis/util/dateutil";
 
 export default new Command({
     regex: /^(\-*\d+)주후급식$/,

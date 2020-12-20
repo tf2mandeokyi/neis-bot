@@ -1,4 +1,4 @@
-import { Command } from "../../commands";
+import { Command } from "..";
 import n주후시간표 from "./n주후시간표";
 
 export default new Command({

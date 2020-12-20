@@ -1,9 +1,9 @@
 import fetch from 'node-fetch';
-import { RawSchoolInfo, School } from './neis/classes/school';
-import { RawSchoolMealInfo, SchoolMeal } from './neis/classes/school/school_meal';
-import { RawSubjectTime, SubjectTime } from './neis/classes/time/subject_time';
+import { RawSchoolInfo, School } from './classes/school';
+import { RawSchoolMealInfo, SchoolMeal } from './classes/school/school_meal';
+import { RawSubjectTime, SubjectTime } from './classes/time/subject_time';
 import * as stringSimilarity from 'string-similarity';
-import * as NeisDateUtil from './neis/util/dateutil';
+import * as NeisDateUtil from './util/dateutil';
 
 
 

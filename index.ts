@@ -1,6 +1,6 @@
-import { NeisApiClient } from './lib/neis';
+import { NeisApiClient } from './src/api/neis';
 import * as discord from 'discord.js';
-import * as CommandUtil from './lib/neis/util/commandutil';
+import * as CommandUtil from './src/api/neis/util/commandutil';
 import * as fs from 'fs';
 
 
