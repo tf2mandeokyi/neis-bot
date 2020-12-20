@@ -31,3 +31,9 @@ export function getWeekEdge(date: Date) {
 
 
 export const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+
+
+
+export function formatDate(date: Date) : string {
+    return `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일`;
+}

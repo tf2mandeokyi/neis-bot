@@ -1,502 +1,59 @@
 import * as discord from 'discord.js';
-import { NeisApiClient, ScheduleTable } from './neis';
-import { School } from './neis/classes/school';
-import { SchoolMeal } from './neis/classes/school/school_meal'
-import { SubjectTime } from './neis/classes/time/subject_time'
-import * as DateUtil from './neis/util/dateutil';
-import * as ScheduleTableImageGenerator from './neis/util/subject_schedule/images/table_img_gen';
-import * as SchoolSearchEmbedGenerator from './neis/util/school/schoolsearch_embed_gen';
-import * as fs from 'fs';
+import { NeisApiClient } from './neis';
 
-const config = JSON.parse(fs.readFileSync('lib/config.json').toString());
-
-
-
-
-
-type StringOrNumber = string | number;
-type ObjectMap<V> = {
+export type ObjectMap<V> = {
     [x: string] : V
 }
-
-
-
-
 
 export interface CommandUsage {
     usage: string,
     description: string
 }
 
+export class Command {
+    regex: RegExp;
+    argsLength: number;
+    category: string;
+    unused?: boolean;
+    usages: CommandUsage[];
+    execute: (message: discord.Message, args: string[], neisClient: NeisApiClient, command: string) => Promise<void>;
 
-
-
-
-export interface Command {
-    regex: RegExp,
-    argsLength: number,
-    category: string,
-    unused?: boolean,
-    usages: CommandUsage[],
-    execute: (message: discord.Message, args: string[], neisClient: NeisApiClient, command: string) => Promise<void>
+    constructor(struct: Command) {
+        this.regex = struct.regex;
+        this.argsLength = struct.argsLength;
+        this.category = struct.category;
+        this.unused = struct.unused;
+        this.usages = struct.usages;
+        this.execute = struct.execute;
+    }
 }
-
-
-
-
-
-const formatDate = function(date: Date) : string {
-    return `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일`;
-}
-
-
-
-
 
 export function getCommand(command: string) : Command {
     return commands.find(c => c.regex.test(command) && !c.unused)
 }
 
-
-
-
+import help from './commands/help';
+import 학교검색 from './commands/학교검색';
+import 오늘급식 from './commands/급식/오늘급식';
+import 이번주급식 from './commands/급식/이번주급식';
+import 다음주급식 from './commands/급식/다음주급식';
+import 저번주급식 from './commands/급식/저번주급식';
+import n주후급식 from './commands/급식/n주후급식';
+import 이번주시간표 from './commands/시간표/이번주시간표';
+import 다음주시간표 from './commands/시간표/다음주시간표';
+import n주후시간표 from './commands/시간표/n주후시간표';
+import 저번주시간표 from './commands/시간표/저번주시간표';
 
 export const commands : Command[] = [
-
-
-
-
-
-    {
-        regex: /^help$/,
-        argsLength: 0,
-        category: '일반',
-        usages: [
-            {usage: 'help', description: '사용 가능한 명령어들을 출력합니다.'},
-            {usage: 'help <명령어>', description: '주어진 명령어의 설명문을 출력합니다.'}
-        ],
-        execute: (message, args) => {
-            return new Promise(async (res, rej) => {
-
-                let { channel } = message;
-
-                switch(args.length) {
-
-                    case 0: // No parameters
-                        let categorySet : ObjectMap<Command[]> = {};
-
-                        commands.forEach((c) => {
-                            if(c.unused === true) return;
-                            if(!categorySet[c.category]) categorySet[c.category] = [];
-                            categorySet[c.category].push(c);
-                        })
-
-                        let result = Object.entries(categorySet)
-                            .map(([category, clist]) => {
-                                let clistcomb = clist.map((c) => {
-                                    return c.usages.map(({usage, description}) => `> ▫️\`${config.command.prefix}${usage}\` ${description}\n`)
-                                        .reduce((prev, current) => prev + current, '');
-                                        // Combines all usages of the command, and then returns it as a "command chunk".
-                                })
-                                .reduce((prev, current, i) => prev + (i != 0 ? '> \n' : '') + current, ''); // Combines command chunks into one category chunk.
-
-                                return `**${category}**\n${clistcomb}\n`; // Returns category chunk.
-                            })
-                            .reduce((prev, current) => prev + current, ''); // Combines all category chunks into one embed.
-
-                        channel.send(
-                            new discord.MessageEmbed().setTitle('커맨드 목록').setDescription(result).setColor('#07b4ed')
-                        );
-                        break;
-
-                    default: 
-                        let command = getCommand(args[0]);
-                        if(!command) {
-                            channel.send(
-                                new discord.MessageEmbed()
-                                    .setTitle(`\`${config.command.prefix}${args[0]}\`라는 명령어가 존재하지 않습니다.`)
-                                    .setColor('#ff0000')
-                            );
-                            return;
-                        }
-                        channel.send(
-                            new discord.MessageEmbed()
-                                .setTitle(`명령어 \`${config.command.prefix}${args[0]}\`의 사용법`)
-                                .setDescription(
-                                    command.usages.map(({usage, description}) => `\`${config.command.prefix + usage}\`: ${description}\n`)
-                                        .reduce((prev, current) => prev + current, '')
-                                )
-                                .setColor('#07b4ed')
-                        );
-                    
-                }
-            })
-        }
-    },
-
-
-
-
-
-    {
-		regex: /^학교검색$/,
-        argsLength: 1,
-        category: '학교',
-        usages: [{usage: '학교검색 <학교>', description: '해당하는 학교의 정보를 출력합니다.'}],
-        execute: async (message, args, neisClient) => {
-            return new Promise(async (res, rej) => {
-                let { channel, author } = message;
-
-                let result = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], 1, {schoolCountPerPage: 5});
-
-                let sentMessage = await channel.send(result);
-
-                ['⏪', '◀️', '▶️', '⏩'].forEach(async emoji => await sentMessage.react(emoji)); // Add pagination reactions
-
-                sentMessage.awaitReactions(
-                    (reaction, user) => {
-                        const emoji = reaction.emoji.name;
-                        return ['⏪', '◀️', '▶️', '⏩'].includes(emoji) // User reacted with right emoji.
-                            && user.id === author.id; // User who has sent the command reacted.
-                    },
-                    {max: 10000, time: 60000}
-                ).then(collection => {
-                    const reaction = collection.first();
-                    if(!reaction) return;
-                    const emoji = reaction.emoji.name; // Get reaction emoji
-
-                    switch(emoji) {
-                        case '⏪':
-                            console.log('go to the first page');
-                            break;
-                        case '◀️':
-                            console.log('go to the previous page');
-                            break;
-                        case '▶️':
-                            console.log('go to the next page');
-                            break;
-                        case '⏩':
-                            console.log('go to the last page');
-                            break;
-                    }
-                });
-            })
-        }
-    },
-
-
-
-
-
-    /*{
-		regex: /^학교검색(:(\d+))$/,
-        argsLength: 1,
-        category: '학교',
-        unused: true,
-        usages: [{usage: '학교검색 <검색어>', description: '검색어가 포함되어있는 학교들을 출력합니다.'}],
-        execute: async (message, args, neisClient, command) => {
-            return new Promise(async (res, rej) => {
-                try {
-                        
-                    let { channel, author } = message;
-                    
-                    let [_, __, page_number] = /^학교검색(:(\d+))$/.exec(command);
-                    let page = parseInt(page_number); // Getting page number
-
-                    const { embed, schools } = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], page, {schoolCountPerPage: 6});
-
-                    let sentMessage = await channel.send(embed); // Send embed object
-
-                    // Number emoji array.
-                    let nearray = SchoolSearchEmbedGenerator.numberEmojiArray.slice(0, schools.length);
-
-                    ['⏪', '◀️'].forEach(async emoji => await sentMessage.react(emoji));
-                    nearray.slice(0, schools.length).forEach(async emoji => await sentMessage.react(emoji));
-                    ['▶️', '⏩'].forEach(async emoji => await sentMessage.react(emoji)); // Add pagination reactions
-
-                    const reactionFilter = function (reaction, user) {
-                        const emoji = reaction.emoji.name;
-                        let num = nearray.includes(emoji);
-                        return (num !== undefined || ['⏪', '◀️', '▶️', '⏩'].includes(emoji)) // User reacted with right emoji.
-                            && user.id === author.id; // User who has sent the command reacted.
-                    }
-
-                    sentMessage.awaitReactions(reactionFilter, {max: 10000, time: 60000, errors: ['time']}).then(collection => {
-                        const reaction = collection.first();
-                        if(!reaction) return;
-                        const emoji = reaction.emoji.name; // Get reaction emoji
-
-                        if(nearray.includes(emoji)) { // If the emoji is number
-                            let num = SchoolSearchEmbedGenerator.numberEmojiSet[emoji];
-                            console.log(schools[num-1]);
-                        }
-                        else {
-                            switch(emoji) {
-                                case '⏪':
-                                    console.log('go to the first page');
-                                    break;
-                                case '◀️':
-                                    console.log('go to the previous page');
-                                    break;
-                                case '▶️':
-                                    console.log('go to the next page');
-                                    break;
-                                case '⏩':
-                                    console.log('go to the last page');
-                                    break;
-                            }
-                        }
-                    });
-                } catch(e) {rej(e)}
-            })
-        }
-    },*/
-
-
-
-
-
-    {
-		regex: /^오늘급식$/,
-        argsLength: 1,
-        category: '급식',
-        usages: [{usage: '오늘급식 <학교>', description: '오늘의 학교 급식을 출력합니다.'}],
-        execute: async (message, args, neisClient) => {
-            return new Promise(async (res, rej) => {
-                let { channel } = message;
-
-                /** @type {School[]} */
-                let schools;
-                try { schools = (await neisClient.getSchoolByName(args[0])).schools } catch(e) { rej(e); return }
-
-                if(!schools) { rej(`\`${args[0]}\` (이)라는 학교가 존재하지 않습니다.`); return }
-                let school = schools[0];
-
-                let currentDate = new Date();
-
-                /**@type {SchoolMeal[]}*/
-                let responseData; 
-                try {
-                    responseData = (await neisClient.getSchoolMeal(school.code, school.eduOffice.code, {from: currentDate, to: currentDate}))
-                } catch(e) {
-                    rej(e); return;
-                }
-
-                responseData.forEach(async (meal) => {
-                    await channel.send(
-                        new discord.MessageEmbed()
-                            .setTitle(`${meal.school.name} ${formatDate(currentDate)} ${meal.mealType}`)
-                            .setColor('#00ff00')
-                            .addFields([
-                                {name: `식단`, value: meal.menu, inline: true},
-                                {name: '영양정보', value: meal.nutritions, inline: true},
-                                {name: '원산지', value: meal.origins, inline: true},
-                                {name: '칼로리', value: meal.calorie}
-                            ])
-                    )
-                });
-            });
-        }
-    },
-
-
-
-
-
-    {
-		regex: /^이번주급식$/,
-        argsLength: 1,
-        category: '급식',
-        usages: [{usage: '이번주급식 <학교>', description: '이번주의 학교 급식을 출력합니다.'}],
-        execute: async (message, args, neisClient) => {
-            return getCommand('0주후급식').execute(message, args, neisClient, '0주후급식');
-        }
-    },
-    {
-		regex: /^다음주급식$/,
-        argsLength: 1,
-        category: '급식',
-        usages: [{usage: '다음주급식 <학교>', description: '다음주의 학교 급식을 출력합니다.'}],
-        execute: async (message, args, neisClient) => {
-            return getCommand('0주후급식').execute(message, args, neisClient, '1주후급식');
-        }
-    },
-    {
-		regex: /^저번주급식$/,
-        argsLength: 1,
-        category: '급식',
-        usages: [{usage: '저번주급식 <학교>', description: '저번주의 학교 급식을 출력합니다.'}],
-        execute: async (message, args, neisClient) => {
-            return getCommand('0주후급식').execute(message, args, neisClient, '-1주후급식');
-        }
-    },
-
-
-
-
-
-    {
-		regex: /^(\-*\d+)주후급식$/,
-        argsLength: 1,
-        category: '급식',
-        usages: [{usage: '<숫자>주후급식 <학교>', description: '몇주 후의 학교 급식을 출력합니다.'}],
-        execute: async (message, args, neisClient, command) => {
-            return new Promise(async (res, rej) => {
-                let { channel } = message;
-
-                let [_, weekFromCommand] = /^(\-*\d+)주후급식$/.exec(command);
-
-                let week_number = parseInt(weekFromCommand);
-
-                if(week_number === NaN) {
-                    rej(`반드시 "주후시간표" 이전에는 숫자가 들어가야 합니다.`); return;
-                }
-
-                /** @type {School[]} */
-                let schools;
-                try { schools = (await neisClient.getSchoolByName(args[0])).schools } catch(e) { rej(e); return }
-
-                if(!schools) { rej(`\`${args[0]}\` (이)라는 학교가 존재하지 않습니다.`); return }
-                let school = schools[0];
-
-                let tempDate = new Date();
-                tempDate.setDate(tempDate.getDate() + 7*week_number);
-                let week = DateUtil.getWeekEdge(tempDate);
-
-                /** @type {SchoolMeal[]} */
-                let responseData;
-                try {
-                    responseData = await neisClient.getSchoolMeal(school.code, school.eduOffice.code, week);
-                } catch(e) {
-                    rej(e); return;
-                }
-
-                let mealTypeSet : ObjectMap<SchoolMeal[]> = {};
-
-                responseData.forEach(day => {
-                    if(!mealTypeSet[day.mealType]) mealTypeSet[day.mealType] = [];
-                    mealTypeSet[day.mealType].push(day);
-                });
-
-                Object.entries(mealTypeSet).forEach(async ([key, value]) => {
-                    await channel.send(
-                        new discord.MessageEmbed()
-                            .setTitle(`${school.name} ${key} (${formatDate(week.from)} ~ ${formatDate(week.to)})`)
-                            .setColor('#00ff00')
-                            .addFields(
-                                value.map(day => {
-                                    return {
-                                        name: `${day.date.day.getMonth()+1}/${day.date.day.getDate()} ${DateUtil.weekdays[day.date.day.getDay()]} (${day.calorie})`,
-                                        value: day.menu,
-                                        inline: true
-                                    }
-                                })
-                            )
-                    );
-                })
-            });
-        }
-    },
-
-
-
-
-
-    {
-		regex: /^이번주시간표$/,
-        argsLength: 5,
-        category: '시간표',
-        usages: [{usage: '이번주시간표 <학교> <학년도> <학기> <학년> <반>', description: '이번주의 시간표를 출력합니다.'}],
-        execute: (message, args, neisClient) => {
-            return getCommand('0주후시간표').execute(message, args, neisClient, '0주후시간표');
-        }
-    },
-    {
-		regex: /^다음주시간표$/,
-        argsLength: 5,
-        category: '시간표',
-        usages: [{usage: '다음주시간표 <학교> <학년도> <학기> <학년> <반>', description: '다음주의 시간표를 출력합니다.'}],
-        execute: (message, args, neisClient) => {
-            return getCommand('0주후시간표').execute(message, args, neisClient, '1주후시간표');
-        }
-    },
-    {
-		regex: /^저번주시간표$/,
-        argsLength: 5,
-        category: '시간표',
-        usages: [{usage: '저번주시간표 <학교> <학년도> <학기> <학년> <반>', description: '저번주의 시간표를 출력합니다.'}],
-        execute: (message, args, neisClient) => {
-            return getCommand('0주후시간표').execute(message, args, neisClient, '-1주후시간표');
-        }
-    },
-
-
-
-
-
-    {
-		regex: /^(\-*\d+)주후시간표$/,
-        argsLength: 5,
-        category: '시간표',
-        usages: [{usage: '<숫자>주후시간표 <학교> <학년도> <학기> <학년> <반>', description: '몇주 후의 시간표를 출력합니다.'}],
-        execute: (message, args, neisClient, command) => {
-            return new Promise(async (res, rej) => {
-                let { channel } = message;
-
-                let [_, weekFromCommand] = /^(\-*\d+)주후시간표$/.exec(command);
-
-                let week_number = parseInt(weekFromCommand);
-
-                if(week_number !== week_number) {
-                    rej(`반드시 "주후시간표" 이전에는 숫자가 들어가야 합니다.`); return;
-                }
-
-                if(args[0].length === 0) rej(`학교명이 비워져있습니다.`);
-
-                let schools : School[];
-                try { schools = (await neisClient.getSchoolByName(args[0])).schools } catch(e) { rej(e); return }
-
-                if(!schools) { rej(`\`${args[0]}\` (이)라는 학교가 존재하지 않습니다.`); return }
-                let school = schools[0];
-
-                let schoolType : ('ele'|'mid'|'high'|'others') = 'others';
-                switch(school.type) {
-                    case '초등학교': schoolType = 'ele'; break;
-                    case '중학교': schoolType = 'mid'; break;
-                    case '고등학교': schoolType = 'high'; break;
-                }
-
-                let tempDate = new Date();
-                tempDate.setDate(tempDate.getDate() + 7*week_number);
-
-                let table: ScheduleTable, week: {from: Date, to: Date};
-                try {
-                    let responseData = await neisClient.getWeekSubjectSchedule(school.code, school.eduOffice.code, schoolType, {
-                        year: parseInt(args[1]),
-                        semester: args[2],
-                        grade: args[3],
-                        classname: args[4]
-                    }, tempDate);
-                    table = responseData.table;
-                    week = responseData.week;
-                } catch(e) {
-                    rej(e); return;
-                }
-
-                let timeTable : any = Object.entries(table).sort((entryA, entryB) => parseInt(entryA[0]) - parseInt(entryB[0])).map(entry => {
-                    let result = [
-                        DateUtil.parseYYYYMMDD(entry[0]),
-                        entry[1]
-                    ]
-                    return result;
-                });
-                // TODO fix this
-
-                let image = ScheduleTableImageGenerator.generate(timeTable);
-                
-                await channel.send('', new discord.MessageAttachment(image.toBuffer(), 'schedule_table.png'));
-            })
-        }
-    }
-
+    help,
+    학교검색,
+    오늘급식,
+    이번주급식,
+    다음주급식,
+    저번주급식,
+    n주후급식,
+    이번주시간표,
+    다음주시간표,
+    저번주시간표,
+    n주후시간표
 ]
