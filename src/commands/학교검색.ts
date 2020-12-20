@@ -19,25 +19,35 @@ export default new Command({
                 await sentMessage.react(emoji); // Add pagination reactions
             }
 
-            reactionListeners.addListener(sentMessage.id, {m: 3}, (reaction, user) => {
-                if(user.id !== author.id) {
-                    return false;
-                }
-                switch(reaction.emoji.name) {
-                    case '⏪':
-                        console.log('go to the first page');
-                        return true;
-                    case '◀️':
-                        console.log('go to the previous page');
-                        return true;
-                    case '▶️':
-                        console.log('go to the next page');
-                        return true;
-                    case '⏩':
-                        console.log('go to the last page');
-                        return true;
-                    default: return false;
-                }
+            reactionListeners.addListener(sentMessage, {m: 5}, {
+                execute: (reaction, user, variable) => {
+                    if(user.id !== author.id) {
+                        return false;
+                    }
+                    switch(reaction.emoji.name) {
+                        case '⏪':
+                            variable.page = 1;
+                            console.log(variable.page);
+                            return true;
+                        case '◀️':
+                            variable.page -= (variable.page == 1 ? 0 : 1);
+                            console.log(variable.page);
+                            return true;
+                        case '▶️':
+                            variable.page += 1;
+                            console.log(variable.page);
+                            return true;
+                        case '⏩':
+                            variable.page += 1;
+                            console.log(variable.page);
+                            return true;
+                        default: return false;
+                    }
+                },
+                variable: {page: 1}
+            }, {
+                deleteAllReactionsOnExpiration: true,
+                deleteReactionOnAdded: true
             });
         })
     }

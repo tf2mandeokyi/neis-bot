@@ -1,22 +1,40 @@
 import * as discord from 'discord.js';
+import { client } from '../..';
+import fetch from 'node-fetch'
 
 
 /** @returns True if the listener has to be continued, or false if otherwise. */
-type ReactionListenerFunction = (reaction: discord.MessageReaction, user: discord.User | discord.PartialUser) => boolean;
+type ReactionListenerFunction<VariableType> = (reaction: discord.MessageReaction, user: discord.User | discord.PartialUser, variable?: VariableType) => boolean;
 type ReactionListenerExpireFunction = () => void;
 
 
-export type ReactionListener = {
-    messageId: string,
-    execute: ReactionListenerFunction,
-    expire?: ReactionListenerExpireFunction,
-    delta: number,
-    expiringDate: Date;
+
+type ReactionListenerOptions = {
+    deleteAllReactionsOnExpiration?: boolean,
+    deleteReactionOnAdded?: boolean
 }
 
 
+type MessageIdPack = {
+    channelId: string,
+    id: string
+}
+
+
+export type ReactionListener<VariableType> = {
+    message: MessageIdPack,
+    execute: ReactionListenerFunction<VariableType>,
+    expire?: ReactionListenerExpireFunction,
+    delta: number,
+    expiringDate: Date,
+    variable: VariableType,
+    options?: ReactionListenerOptions;
+}
+
+
+
 export class ReactionListenerList {
-    private list: ReactionListener[];
+    private list: ReactionListener<any>[];
 
     constructor() {this.list = []}
 
@@ -24,31 +42,71 @@ export class ReactionListenerList {
         return setInterval(async () => {await this.update()}, 1000);
     }
 
-    addListener(messageId: string, {h, m, s, ms} : {h?: number, m?: number, s?: number, ms?: number}, execute: ReactionListenerFunction, expire?: ReactionListenerExpireFunction) {
+
+
+    addListener<T extends any>(
+            message: discord.Message,
+            {h, m, s, ms} : {h?: number, m?: number, s?: number, ms?: number},
+            {execute, expire, variable}: {
+                execute: ReactionListenerFunction<T>,
+                expire?: ReactionListenerExpireFunction,
+                variable?: T
+            },
+            options?: ReactionListenerOptions
+    ) {
         let delta = (((h??0)*60 + (m??0))*60 + (s??0))*1000 + (ms??0);
 
-        this.list.push({messageId, execute, expire, expiringDate: new Date(new Date().getTime() + delta), delta});
-
-        console.log("Listener added.")
+        this.list.push({
+            message: {channelId: message.channel.id, id: message.id},
+            execute,
+            expire,
+            expiringDate: new Date(new Date().getTime() + delta),
+            delta,
+            variable,
+            options
+        });
     }
+
+
 
     async check(messageId: string, reaction: discord.MessageReaction, user: discord.User | discord.PartialUser) {
         let date = new Date().getTime();
         for(let listener of this.list) {
-            if(listener.messageId === messageId) {
-                let again = await listener.execute(reaction, user);
+            if(listener.message.id === messageId) {
+                let again = await listener.execute(reaction, user, listener.variable);
                 if(again) {
                     listener.expiringDate = new Date(date + listener.delta);
+                }
+                if(listener.options.deleteReactionOnAdded) {
+                    fetch(`https://discord.com/api/v8/channels/` +
+                          `${listener.message.channelId}/messages/${listener.message.id}/reactions/${encodeURI(reaction.emoji.name)}/${user.id}`,
+                        {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bot ${client.token}`
+                            }
+                        }
+                    )
                 }
             }
         }
     }
 
-    async update() {
+
+
+    update() {
         let date = new Date().getTime();
         this.list = this.list.filter(listener => {
             if(listener.expiringDate.getTime() < date) {
                 if(listener.expire) listener.expire();
+                if(listener.options.deleteAllReactionsOnExpiration) {
+                    fetch(`https://discord.com/api/v8/channels/${listener.message.channelId}/messages/${listener.message.id}/reactions`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bot ${client.token}`
+                        }
+                    })
+                }
                 return false;
             }
             return true;
