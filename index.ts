@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 
 export const important = JSON.parse(fs.readFileSync('important.json').toString())
-export const config = JSON.parse(fs.readFileSync('lib/config.json').toString())
+export const config = JSON.parse(fs.readFileSync('config.json').toString())
 
 
 const client = new discord.Client();
