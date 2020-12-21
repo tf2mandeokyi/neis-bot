@@ -18,8 +18,8 @@ export default new Command({
             for (let emoji of ['⏪', '◀️', '▶️', '⏩']) {
                 await sentMessage.react(emoji); // Add pagination reactions
             }
-
-            reactionListeners.addListener(sentMessage, {m: 5}, {
+            
+            reactionListeners.addListener(sentMessage, {m: 3}, {
                 execute: (reaction, user, variable) => {
                     if(user.id !== author.id) {
                         return false;

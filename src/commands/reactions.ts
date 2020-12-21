@@ -1,6 +1,7 @@
 import * as discord from 'discord.js';
 import { client } from '../..';
 import fetch from 'node-fetch'
+import * as DiscordRawRequest from '../util/discord/rawrequest'
 
 
 /** @returns True if the listener has to be continued, or false if otherwise. */
@@ -78,15 +79,7 @@ export class ReactionListenerList {
                     listener.expiringDate = new Date(date + listener.delta);
                 }
                 if(listener.options.deleteReactionOnAdded) {
-                    fetch(`https://discord.com/api/v8/channels/` +
-                          `${listener.message.channelId}/messages/${listener.message.id}/reactions/${encodeURI(reaction.emoji.name)}/${user.id}`,
-                        {
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': `Bot ${client.token}`
-                            }
-                        }
-                    )
+                    DiscordRawRequest.deleteUserReaction(client, listener.message.channelId, listener.message.id, user.id, reaction.emoji.name);
                 }
             }
         }
@@ -100,12 +93,7 @@ export class ReactionListenerList {
             if(listener.expiringDate.getTime() < date) {
                 if(listener.expire) listener.expire();
                 if(listener.options.deleteAllReactionsOnExpiration) {
-                    fetch(`https://discord.com/api/v8/channels/${listener.message.channelId}/messages/${listener.message.id}/reactions`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bot ${client.token}`
-                        }
-                    })
+                    DiscordRawRequest.deleteAllReactions(client, listener.message.channelId, listener.message.id)
                 }
                 return false;
             }
