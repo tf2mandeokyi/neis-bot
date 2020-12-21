@@ -14,7 +14,13 @@ export default new Command({
         return new Promise(async (res, rej) => {
             let { channel, author } = message;
 
-            let {embed, page_count} = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], 1, {schoolCountPerPage: 5});
+            let schools: School[], total_count: number;
+            try { 
+                let tmp = (await neisClient.getSchoolByName(args[0]));
+                schools = tmp.schools; total_count = tmp.total_count;
+            } catch(e) { rej(e); return }
+
+            let {embed, page_count} = await SchoolSearchEmbedGenerator.generate(schools, total_count, 1, {schoolCountPerPage: 5});
 
             let sentMessage = await channel.send(embed);
 
@@ -51,7 +57,7 @@ export default new Command({
                             break;
                     }
                     if(fix) {
-                        let fixed_embed = (await SchoolSearchEmbedGenerator.generate(neisClient, args[0], variable.page, {schoolCountPerPage: 5})).embed;
+                        let fixed_embed = (await SchoolSearchEmbedGenerator.generate(variable.schools, variable.total_count, variable.page, {schoolCountPerPage: 5})).embed;
                         await DiscordRawRequest.editMessageEmbed(client, channel.id, sentMessage.id,
                             fixed_embed
                         );
@@ -59,7 +65,7 @@ export default new Command({
                     }
                     return false;
                 },
-                variable: {page: 1}
+                variable: {page: 1, schools, total_count}
             }, {
                 deleteAllReactionsOnExpiration: true,
                 deleteReactionOnAdded: true

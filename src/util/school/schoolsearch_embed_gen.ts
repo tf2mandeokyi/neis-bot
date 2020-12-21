@@ -67,22 +67,14 @@ export async function generate_deprecated(
 
 
 export async function generate(
-    neisClient: NeisApiClient,
-    schoolName: string,
+    schools: School[],
+    total_count: number,
     page: number,
     {schoolCountPerPage=5}
 ) : Promise<{embed: discord.MessageEmbed, page_count: number}>
 {
 
     return new Promise(async (res, rej) => {
-
-        let schools : School[];
-        let total_count : number;
-        
-        try { 
-            let tmp = (await neisClient.getSchoolByName(schoolName));
-            schools = tmp.schools; total_count = tmp.total_count;
-        } catch(e) { rej(e); return }
 
         let page_count = Math.ceil(schools.length / schoolCountPerPage);
         let { min: page_min, max: page_max } = getPaginationRange(page, schoolCountPerPage, page_count);
