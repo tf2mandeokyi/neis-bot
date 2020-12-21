@@ -30,42 +30,6 @@ const getPaginationRange = function(page: number, pageCount: number, arrayLength
 
 
 
-/*
-export async function generate_deprecated(
-        neisClient: NeisApiClient,
-        schoolName: string,
-        page: number,
-        {schoolCountPerPage} : {schoolCountPerPage: number}
-)
-{
-    const schools = await neisClient.getSchoolByName(schoolName); // Getting data
-
-    let schoolsobj = schools.slice(0, schoolCountPerPage).map((school, i) => ({name: numberEmojiArray[i], value: school.name, inline: true})); // Preparing embed object
-
-    let { min: it_min, max: it_max } = getPaginationRange(page, schoolCountPerPage, schools.total_count);
-
-    let pagination = '⏪ ◀️ ';
-    if(1 !== it_min) pagination += '1 ... '
-    for(let i=it_min;i<=it_max;i++) {
-        pagination += i === page ? `__**${i}**__ ` : `${i} `;
-    }
-    if(page_end !== it_max) pagination += `... ${page_end} `
-    pagination += '▶️ ⏩'; // Setting up pagination string
-
-    let embed = new discord.MessageEmbed().setTitle('검색 결과').setColor('#00ff00').setTimestamp()
-        .setDescription(`Found ${schools.length} ${schools.length === 1 ? 'school' : 'schools'}\n`)
-        .addFields(schoolsobj)
-        .addField('\u200B', pagination);
-
-    return {
-        embed: embed,
-        schools: schoolsobj
-    }
-}
-*/
-
-
-
 export async function generate(
     schools: School[],
     total_count: number,
