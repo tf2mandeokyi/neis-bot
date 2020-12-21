@@ -3,13 +3,15 @@ import fetch from 'node-fetch'
 
 
 async function send(client: discord.Client, path: string, method: string, body?: string) {
-    return await fetch('https://discord.com/api/v8' + path, {
+    let response = await fetch('https://discord.com/api/v8' + path, {
         method,
         headers: {
-            'Authorization': `Bot ${client.token}`
+            'Authorization': `Bot ${client.token}`,
+            'Content-Type': 'application/json'
         },
         body
     })
+    let data = response.text();
 }
 
 

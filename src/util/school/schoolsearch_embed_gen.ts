@@ -71,7 +71,7 @@ export async function generate(
     schoolName: string,
     page: number,
     {schoolCountPerPage=5}
-) : Promise<discord.MessageEmbed>
+) : Promise<{embed: discord.MessageEmbed, page_count: number}>
 {
 
     return new Promise(async (res, rej) => {
@@ -103,7 +103,7 @@ export async function generate(
         let embed = new discord.MessageEmbed().setTitle('검색 결과').setColor('#00ff00').setTimestamp()
             .setDescription(description)
             .addFields(
-                schools.slice(page-1, 5).map(school => ({
+                schools.slice((page*5)-5, (page*5)).map(school => ({
                     name: `▫️${school.name} (${school.code})`,
                     value: `> **교육청**: ${school.eduOffice.name} (코드: ${school.eduOffice.code})\n` +
                             `> **종류**: ${school.type}\n` +
@@ -114,6 +114,6 @@ export async function generate(
             )
             .addField('\u200B', pagination);
 
-        res(embed);
+        res({embed, page_count});
     })
 }

@@ -5,7 +5,9 @@ import * as DiscordRawRequest from '../util/discord/rawrequest'
 
 
 /** @returns True if the listener has to be continued, or false if otherwise. */
-type ReactionListenerFunction<VariableType> = (reaction: discord.MessageReaction, user: discord.User | discord.PartialUser, variable?: VariableType) => boolean;
+type ReactionListenerFunction<VariableType> =
+    (reaction: discord.MessageReaction, user: discord.User | discord.PartialUser, variable?: VariableType)
+        => (boolean | Promise<boolean>);
 type ReactionListenerExpireFunction = () => void;
 
 

@@ -1,6 +1,9 @@
 import { Command } from ".";
-import { reactionListeners } from "../..";
+import { client, reactionListeners } from "../..";
 import * as SchoolSearchEmbedGenerator from '../util/school/schoolsearch_embed_gen';
+import * as DiscordRawRequest from '../util/discord/rawrequest'
+import { MessageEmbed } from "discord.js";
+import { School } from "../api/neis/classes/school";
 
 export default new Command({
     regex: /^학교검색$/,
@@ -11,38 +14,50 @@ export default new Command({
         return new Promise(async (res, rej) => {
             let { channel, author } = message;
 
-            let result = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], 1, {schoolCountPerPage: 5});
+            let {embed, page_count} = await SchoolSearchEmbedGenerator.generate(neisClient, args[0], 1, {schoolCountPerPage: 5});
 
-            let sentMessage = await channel.send(result);
+            let sentMessage = await channel.send(embed);
 
             for (let emoji of ['⏪', '◀️', '▶️', '⏩']) {
                 await sentMessage.react(emoji); // Add pagination reactions
             }
             
             reactionListeners.addListener(sentMessage, {m: 3}, {
-                execute: (reaction, user, variable) => {
+                execute: async (reaction, user, variable) => {
                     if(user.id !== author.id) {
                         return false;
                     }
+                    let fix: boolean = false;
                     switch(reaction.emoji.name) {
                         case '⏪':
-                            variable.page = 1;
-                            console.log(variable.page);
-                            return true;
+                            if(variable.page !== 1) {
+                                variable.page = 1; fix = true;
+                            }
+                            break;
                         case '◀️':
-                            variable.page -= (variable.page == 1 ? 0 : 1);
-                            console.log(variable.page);
-                            return true;
+                            if(variable.page !== 1) {
+                                variable.page -= 1; fix = true;
+                            }
+                            break;
                         case '▶️':
-                            variable.page += 1;
-                            console.log(variable.page);
-                            return true;
+                            if(variable.page !== page_count) {
+                                variable.page += 1; fix = true;
+                            }
+                            break;
                         case '⏩':
-                            variable.page += 1;
-                            console.log(variable.page);
-                            return true;
-                        default: return false;
+                            if(variable.page !== page_count) {
+                                variable.page = page_count; fix = true;
+                            }
+                            break;
                     }
+                    if(fix) {
+                        let fixed_embed = (await SchoolSearchEmbedGenerator.generate(neisClient, args[0], variable.page, {schoolCountPerPage: 5})).embed;
+                        await DiscordRawRequest.editMessageEmbed(client, channel.id, sentMessage.id,
+                            fixed_embed
+                        );
+                        return true;
+                    }
+                    return false;
                 },
                 variable: {page: 1}
             }, {
