@@ -5,7 +5,7 @@ import * as DiscordRawRequest from '../util/discord/rawrequest'
 
 
 /** @returns True if the listener has to be continued, or false if otherwise. */
-type ReactionListenerFunction<VariableType> =
+type ReactionListenerFunction<VariableType extends object> =
     (reaction: discord.MessageReaction, user: discord.User | discord.PartialUser, variable?: VariableType)
         => (boolean | Promise<boolean>);
 type ReactionListenerExpireFunction = () => void;
@@ -24,7 +24,7 @@ type MessageIdPack = {
 }
 
 
-export type ReactionListener<VariableType> = {
+export type ReactionListener<VariableType extends object> = {
     message: MessageIdPack,
     execute: ReactionListenerFunction<VariableType>,
     expire?: ReactionListenerExpireFunction,
@@ -37,7 +37,7 @@ export type ReactionListener<VariableType> = {
 
 
 export class ReactionListenerList {
-    private list: ReactionListener<any>[];
+    private list: ReactionListener<object>[];
 
     constructor() {this.list = []}
 
@@ -47,7 +47,7 @@ export class ReactionListenerList {
 
 
 
-    addListener<T extends any>(
+    addListener<T extends object>(
             message: discord.Message,
             {h, m, s, ms} : {h?: number, m?: number, s?: number, ms?: number},
             {execute, expire, variable}: {

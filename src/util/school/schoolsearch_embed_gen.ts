@@ -38,38 +38,45 @@ export async function generate(
 ) : Promise<{embed: discord.MessageEmbed, page_count: number}>
 {
 
-    return new Promise(async (res, rej) => {
+    let page_count = Math.ceil(schools.length / schoolCountPerPage);
+    let { min: page_min, max: page_max } = getPaginationRange(page, schoolCountPerPage, page_count);
 
-        let page_count = Math.ceil(schools.length / schoolCountPerPage);
-        let { min: page_min, max: page_max } = getPaginationRange(page, schoolCountPerPage, page_count);
 
-        let pagination = '⏪ ◀️ ';
-        if(1 !== page_min) pagination += '1 ... '
-        for(let i=page_min;i<=page_max;i++) {
-            pagination += i === page ? `__**${i}**__ ` : `${i} `;
-        }
-        if(page_count !== page_max) pagination += `... ${page_count} `
-        pagination += '▶️ ⏩'; // Setting up pagination string
+    let pagination = '';
 
-        let description = `Found ${total_count} ${total_count === 1 ? 'school' : 'schools'}`;
-        if(total_count > 1000) {
-            description += ', limiting to 1000 schools.'
-        }
+    if(page > 2) pagination += '⏪ ';
+    if(page > 1) pagination += '◀️ ';
 
-        let embed = new discord.MessageEmbed().setTitle('검색 결과').setColor('#00ff00').setTimestamp()
-            .setDescription(description)
-            .addFields(
-                schools.slice((page*5)-5, (page*5)).map(school => ({
-                    name: `▫️${school.name} (${school.code})`,
-                    value: `> **교육청**: ${school.eduOffice.name} (코드: ${school.eduOffice.code})\n` +
-                            `> **종류**: ${school.type}\n` +
-                            `> **영문명**: ${school.engName}\n` +
-                            `> **도로명 주소**: ${school.roadName.address} (우편번호: ${school.roadName.zipCode})\n` +
-                            `> **Tel**: ${school.telephone} (팩스: ${school.fax})` // \n\u200B
-                }))
-            )
-            .addField('\u200B', pagination);
+    if(1 !== page_min) pagination += '1 ... '
+    for(let i=page_min;i<=page_max;i++) {
+        pagination += i === page ? `__**${i}**__ ` : `${i} `;
+    }
+    if(page_count !== page_max) pagination += `... ${page_count} `;
+    
+    if(page < page_count) pagination += '▶️ ';
+    if(page < page_count-1) pagination += '⏩';
 
-        res({embed, page_count});
-    })
+
+    let description = `Found ${total_count} ${total_count === 1 ? 'school' : 'schools'}`;
+    if(total_count > 1000) {
+        description += ', limiting to 1000 schools.'
+    }
+
+
+    let embed = new discord.MessageEmbed().setTitle('검색 결과').setColor('#00ff00').setTimestamp()
+        .setDescription(description)
+        .addFields(
+            schools.slice((page-1)*schoolCountPerPage, page*schoolCountPerPage).map(school => ({
+                name: `▫️${school.name} (${school.code})`,
+                value: `> **교육청**: ${school.eduOffice.name} (코드: ${school.eduOffice.code})\n` +
+                        `> **종류**: ${school.type}\n` +
+                        `> **영문명**: ${school.engName}\n` +
+                        `> **도로명 주소**: ${school.roadName.address} (우편번호: ${school.roadName.zipCode})\n` +
+                        `> **Tel**: ${school.telephone} (팩스: ${school.fax})`, // \n\u200B
+                inline: false
+            }))
+        )
+        .addField('\u200B', pagination);
+
+    return {embed, page_count}
 }
