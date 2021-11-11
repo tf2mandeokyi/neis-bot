@@ -1,6 +1,6 @@
 import { Command } from ".";
 import { client, reactionListeners } from "../..";
-import * as SchoolSearchEmbedGenerator from '../util/school/schoolsearch_embed_gen';
+import * as SchoolSearchEmbedGenerator from '../util/school/searchEmbedGen';
 import * as DiscordRawRequest from '../util/discord/rawrequest'
 import { School } from "../api/neis/classes/school";
 

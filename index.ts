@@ -1,29 +1,15 @@
-import * as discord from 'discord.js';
-import * as fs from 'fs';
+import { Client, Intents } from 'discord.js';
 import { NeisApiClient } from './src/api/neis';
-import { ReactionListenerList } from './src/commands/reactions';
+import { bot_token, neis_token } from './config.json';
 
+export const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+export const neisClient = new NeisApiClient(neis_token);
 
-export const important = JSON.parse(fs.readFileSync('important.json').toString())
-export const config = JSON.parse(fs.readFileSync('config.json').toString())
-export const reactionListeners : ReactionListenerList = new ReactionListenerList();
+import interactionCreate from './src/events/interactionCreate';
+import prelogin from './src/events/prelogin';
+import ready from './src/events/ready';
 
-
-reactionListeners.start();
-
-
-export const client = new discord.Client();
-export const neisClient = new NeisApiClient(important['neis-token']);
-
-
-import onMessage from './src/events/message';
-import onReady from './src/events/ready';
-import onMessageReactionAdd from './src/events/messageReactionAdd';
-
-
-client.on('message', onMessage);
-client.on('ready', onReady)
-client.on('messageReactionAdd', onMessageReactionAdd)
-
-
-client.login(important['bot-token']);
+prelogin();
+client.on('interactionCreate', interactionCreate);
+client.on('ready', ready);
+client.login(bot_token);

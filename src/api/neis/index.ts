@@ -90,7 +90,7 @@ export class NeisApiClient {
     {
         const response = await this.fetchData<RawSchoolInfo>('/hub/schoolInfo', options, {SCHUL_NM: name}, 'schoolInfo')
         
-        if(!response.data) throw new Error(`\`${name}\` (이)라는 학교가 존재하지 않습니다.`);
+        if(!response.data) throw new Error(`"${name}" (이)라는 학교가 존재하지 않습니다.`);
         else return {
             total_count: response.totalCount,
             schools: response.data.map(i => new School(i))
@@ -112,7 +112,7 @@ export class NeisApiClient {
             MLSV_TO_YMD: NeisDateUtil.toYYYYMMDD(to)
         }, 'mealServiceDietInfo');
         
-        if(!response.data) throw new Error(`주어진 값에 대한 데이터가 없습니다. (아마도 휴일이거나 아니면 급식이 없는거겠죠?)`);
+        if(!response.data) throw new Error(`주어진 값에 대한 데이터가 없습니다. (아마도 휴일이거나 급식이 없는거겠죠?)`);
         else return response.data.map(i => new SchoolMeal(i));
     }
 
