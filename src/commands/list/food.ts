@@ -42,15 +42,11 @@ async function singleWeek(school: School, date: Date) : Promise<MessageEmbed[]> 
             new MessageEmbed()
                 .setTitle(`${school.name} ${key} (${formatDate(week.from)} ~ ${formatDate(week.to)})`)
                 .setColor('#00ff00')
-                .addFields(
-                    value.map(day => {
-                        return {
-                            name: `${day.date.day.getMonth()+1}/${day.date.day.getDate()} ${weekdays[day.date.day.getDay()]} (${day.calorie})`,
-                            value: day.menu,
-                            inline: true
-                        }
-                    })
-                )
+                .addFields(value.map(day => ({
+                    name: `${day.date.day.getMonth()+1}/${day.date.day.getDate()} ${weekdays[day.date.day.getDay()]} (${day.calorie})`,
+                    value: day.menu,
+                    inline: true
+                })))
         );
     });
 
