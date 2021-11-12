@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from '@discordjs/builders';
-import { CommandInteraction, GuildChannel, ThreadChannel, User, GuildMember, Role, CommandInteractionOptionResolver, CacheType } from 'discord.js';
-import { ChannelType, RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types';
+import { CommandInteraction, User, CommandInteractionOptionResolver, CacheType, MessageOptions, Guild, TextBasedChannels, Message, MessageEmbed } from 'discord.js';
+import { APIMessage, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types';
 
 
 type CommonOption<T extends string> = { type: T; description: string; }
@@ -33,7 +33,17 @@ type CommandOptionSet = { [name: string] : OptionTypes };
 interface CommandStruct {
     readonly description: string;
     readonly options?: CommandOptionSet;
-    readonly onCommand: (options: Omit<CommandInteractionOptionResolver<CacheType>, "getMessage" | "getFocused">, interaction: CommandInteraction) => Promise<void>;
+    readonly onCommand: (event: CommandEvent) => Promise<void>;
+}
+
+
+export interface CommandEvent {
+    options: Omit<CommandInteractionOptionResolver<CacheType>, "getMessage" | "getFocused">;
+    update: (content: MessageOptions) => Promise<Message | APIMessage>;
+
+    channel: TextBasedChannels;
+    guild: Guild;
+    user: User;
 }
 
 
@@ -41,12 +51,35 @@ export class Command implements CommandStruct {
 
     readonly description: string;
     readonly options?: CommandOptionSet;
-    readonly onCommand: (options: Omit<CommandInteractionOptionResolver<CacheType>, "getMessage" | "getFocused">, interaction: CommandInteraction) => Promise<void>;
+    readonly onCommand: (options: CommandEvent) => Promise<void>;
 
     constructor({ description, options, onCommand }: CommandStruct) {
         this.description = description;
         this.options = options;
         this.onCommand = onCommand;
+    }
+
+    async handleCommandInteraction(interaction: CommandInteraction) {
+        const { options } = interaction;
+        const update = async function(content: MessageOptions) : Promise<Message | APIMessage> {
+            if(interaction.replied) {
+                return await interaction.editReply(content);
+            }
+            else {
+                return await interaction.reply({ ...content, fetchReply: true });
+            }
+        }
+        const { channel, guild, user } = interaction;
+        try {
+            await this.onCommand({ options, update, channel, guild, user });
+        } catch(error) {
+            if(interaction.replied) {
+                await update({ embeds: [ errorEmbed(error) ], components: [] });
+            }
+            else {
+                await update({ embeds: [ errorEmbed(error) ], components: [] });
+            }
+        }
     }
 
     getCommandJSONBody(name: string) : RESTPostAPIApplicationCommandsJSONBody {
@@ -59,6 +92,16 @@ export class Command implements CommandStruct {
 
         return builder.toJSON();
     }
+}
+
+
+function errorEmbed(reason: string | Error) : MessageEmbed {
+    let message = reason instanceof Error ? reason.message : reason;
+    message.replace('`', '"');
+    return new MessageEmbed()
+        .setTitle("에러 발생!")
+        .setDescription(`사유: \`${message}\``)
+        .setColor("RED")
 }
 
 

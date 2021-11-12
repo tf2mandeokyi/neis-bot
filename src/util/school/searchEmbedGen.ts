@@ -1,8 +1,9 @@
-import { CacheType, CommandInteraction, Message, MessageComponentInteraction, MessageEmbed, MessageInteraction, MessageOptions } from 'discord.js';
+import { MessageEmbed } from 'discord.js';
 import { MessageActionRow, MessageButton } from "discord.js";
 
 import { NeisApiClient } from '../../api/neis';
 import { School } from '../../api/neis/classes/school';
+import { CommandEvent } from '../../commands/command';
 
 
 
@@ -54,27 +55,25 @@ async function createContent(neisClient: NeisApiClient, search: string, page: nu
 
 
 export default async function(
-    neisClient: NeisApiClient, search: string, command: CommandInteraction<CacheType>,
-    onSuccess: (school: School) => Promise<MessageOptions>, per_page: number = 3,
-) : Promise<void> {
+    neisClient: NeisApiClient, search: string, event: CommandEvent, per_page: number = 3,
+) : Promise<School> {
 
     let page = 1;
 
     let { schools, embed, components, page_count } = await createContent(neisClient, search, page, per_page);
 
     if(schools.length == 1) {
-        await command.reply(await onSuccess(schools[0]));
-        return;
+        return schools[0];
     }
 
-    let message = await command.reply({ embeds: [ embed ], components, fetchReply: true });
+    let message = await event.update({ embeds: [ embed ], components });
 
-    const collector = command.channel.createMessageComponentCollector({
-        filter: i => i.isMessageComponent() && i.user.id == command.user.id && i.message.id == message.id,
+    const collector = event.channel.createMessageComponentCollector({
+        filter: i => i.isMessageComponent() && i.user.id == event.user.id && i.message.id == message.id,
         time: 120000
     });
 
-    return new Promise<void>((resolve, _) => {
+    return new Promise<School>((resolve, _) => {
         collector.on('collect', async interaction => {
             if(!interaction.isMessageComponent()) return;
     
@@ -82,8 +81,8 @@ export default async function(
                 let { customId } = interaction;
                 if(customId.startsWith('school_')) {
                     let school = schools[Number.parseInt(customId.substring('school_'.length)) - 1];
-                    await interaction.update(await onSuccess(school));
-                    resolve();
+                    collector.ended = true;
+                    resolve(school);
                 }
                 else {
                     switch(customId) {
@@ -97,6 +96,5 @@ export default async function(
                 }
             }
         });
-    })
-
+    });
 }

@@ -75,22 +75,21 @@ export default new Command({
             }
         }
     },
-    onCommand: async function(options, interaction) {
-        await searchEmbedGen(neisClient, options.getString("학교"), interaction, async school => {
-            let embeds : MessageEmbed[];
-            switch(options.getString("기간")) {
-                case 'yesterday': embeds = await singleDay(school, new Date(new Date().getTime() - 8.64e+7)); break;
-                case 'today':     embeds = await singleDay(school, new Date(new Date().getTime())); break;
-                case 'tomorrow':  embeds = await singleDay(school, new Date(new Date().getTime() + 8.64e+7)); break;
+    onCommand: async function(event) {
+        let school = await searchEmbedGen(neisClient, event.options.getString("학교"), event);
+        let embeds : MessageEmbed[];
+        switch(event.options.getString("기간")) {
+            case 'yesterday': embeds = await singleDay(school, new Date(new Date().getTime() - 8.64e+7)); break;
+            case 'today':     embeds = await singleDay(school, new Date(new Date().getTime())); break;
+            case 'tomorrow':  embeds = await singleDay(school, new Date(new Date().getTime() + 8.64e+7)); break;
 
-                case 'prevweek': embeds = await singleWeek(school, new Date(new Date().getTime() - 7 * 8.64e+7)); break;
-                case 'nextweek': embeds = await singleWeek(school, new Date(new Date().getTime() + 7 * 8.64e+7)); break;
-                
-                case 'thisweek':
-                default: embeds = await singleWeek(school, new Date(new Date().getTime()));
-            }
+            case 'prevweek': embeds = await singleWeek(school, new Date(new Date().getTime() - 7 * 8.64e+7)); break;
+            case 'nextweek': embeds = await singleWeek(school, new Date(new Date().getTime() + 7 * 8.64e+7)); break;
+            
+            case 'thisweek':
+            default: embeds = await singleWeek(school, new Date(new Date().getTime()));
+        }
 
-            return { embeds };
-        });
+        await event.update({ embeds, components: [] });
     }
 })

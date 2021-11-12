@@ -34,39 +34,40 @@ export default new Command({
             description: "n번째 주 후의 시간표가 출력됩니다. 예: 0=이번주, 1=다음주"
         },
     },
-    onCommand: async function(options, interaction) {
-        await searchEmbedGen(neisClient, options.getString("학교"), interaction, async school => {
-            let n_weeks = options.getInteger("n주후") ?? 0;
+    onCommand: async function(event) {
+        let { options } = event;
+        let school = await searchEmbedGen(neisClient, options.getString("학교"), event);
+        let n_weeks = options.getInteger("n주후") ?? 0;
 
-            let schoolType : 'ele' | 'mid' | 'high' | 'others' = 'others';
-            switch(school.type) {
-                case '초등학교': schoolType = 'ele'; break;
-                case '중학교': schoolType = 'mid'; break;
-                case '고등학교': schoolType = 'high'; break;
-            }
-    
-            let tempDate = new Date();
-            tempDate.setDate(tempDate.getDate() + 7 * n_weeks);
-    
-            let { table, week } = await neisClient.getWeekSubjectSchedule(school.code, school.eduOffice.code, schoolType, {
-                year: options.getInteger("년도"),
-                grade: options.getString("학년"),
-                classname: options.getString("반")
-            }, tempDate);
-    
-            let timeTable : [Date, {[x: number]: string}][] = Object.entries(table)
-                .sort((entryA, entryB) => parseInt(entryA[0]) - parseInt(entryB[0]))
-                .map(entry => [ parseYYYYMMDD(entry[0]), entry[1] ]);
-    
-            console.log(timeTable);
-            
-            let image = ScheduleTableImageGenerator.generate(timeTable);
-            
-            return { 
-                attachments: [ new MessageAttachment(image.toBuffer('image/png')) ], 
-                embeds: [], 
-                components: [] 
-            };
-        });
+        let schoolType : 'ele' | 'mid' | 'high' | 'others' = 'others';
+        switch(school.type) {
+            case '초등학교': schoolType = 'ele'; break;
+            case '중학교': schoolType = 'mid'; break;
+            case '고등학교': schoolType = 'high'; break;
+        }
+
+        let tempDate = new Date();
+        tempDate.setDate(tempDate.getDate() + 7 * n_weeks);
+
+        let { table } = await neisClient.getWeekSubjectSchedule(school.code, school.eduOffice.code, schoolType, {
+            year: options.getInteger("년도"),
+            grade: options.getString("학년"),
+            classname: options.getString("반")
+        }, tempDate);
+
+        let timeTable : [Date, {[x: number]: string}][] = Object.entries(table)
+            .sort((entryA, entryB) => parseInt(entryA[0]) - parseInt(entryB[0]))
+            .map(entry => [ parseYYYYMMDD(entry[0]), entry[1] ]);
+        
+        let image = ScheduleTableImageGenerator.generate(timeTable);
+        
+        await event.update({ 
+            files: [{
+                attachment: image.toBuffer('image/png'),
+                name: 'table.png'
+            }],
+            embeds: [],
+            components: []
+        })
     }
 })
